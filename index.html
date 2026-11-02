@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>名單總系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: mobile-first ledger — summary cards up top, a fixed bottom tab bar, contact details open as a bottom sheet */
+:root{
+  --bg:#eef2f1; --surface:#ffffff; --sunk:#e4eae8; --ink:#16282b; --muted:#5b6d6e; --line:#d3dcda;
+  --accent:#0f6b63; --accent-soft:#d6ece8; --recruit:#6449a8; --recruit-soft:#e8e2f5;
+  --warn:#a85c14; --warn-soft:#f7e8d6; --bad:#b0352e; --bad-soft:#f6dedb; --good:#2c7a39;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1616; --surface:#152120; --sunk:#1b2a29; --ink:#e3edeb; --muted:#93a7a5; --line:#273a38;
+  --accent:#4db5aa; --accent-soft:#163633; --recruit:#a891e8; --recruit-soft:#272043;
+  --warn:#e09a54; --warn-soft:#3a2a17; --bad:#ec6c62; --bad-soft:#3d1d1a; --good:#6cc27a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1616; --surface:#152120; --sunk:#1b2a29; --ink:#e3edeb; --muted:#93a7a5; --line:#273a38;
+  --accent:#4db5aa; --accent-soft:#163633; --recruit:#a891e8; --recruit-soft:#272043;
+  --warn:#e09a54; --warn-soft:#3a2a17; --bad:#ec6c62; --bad-soft:#3d1d1a; --good:#6cc27a; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px)}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 110px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-family:var(--f-display);font-size:24px;margin:0;letter-spacing:.02em;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px}
+h2{font-family:var(--f-display);font-size:17px;margin:0;text-wrap:balance}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--sunk);border-radius:8px;padding:10px}
+.kpi .l{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.kpi .v{font-family:var(--f-num);font-size:22px;font-variant-numeric:tabular-nums}
+.kpi .g{font-size:12px;color:var(--muted)}
+.meter{height:5px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+.meter i.done{background:var(--good)}
+.banner{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:10px 12px;font-size:14px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:500}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:focus-visible,.chip:focus-visible,.row:focus-visible,.tab:focus-visible,.pcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 4px;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;width:100%}
+.row:first-child{border-top:0}
+.row:hover{background:var(--sunk)}
+.row .n{font-weight:500;display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0}
+.row .m{grid-column:1;color:var(--muted);font-size:13px;min-width:0}
+.row .d{grid-row:1/3;grid-column:2;align-self:center;text-align:right;font-size:13px}
+.tag{display:inline-block;font-size:11.5px;line-height:1;padding:4px 6px;border-radius:5px;font-weight:500;white-space:nowrap}
+.t-c{background:var(--accent-soft);color:var(--accent)}
+.t-r{background:var(--recruit-soft);color:var(--recruit)}
+.t-ex{background:var(--warn-soft);color:var(--warn)}
+.lv{font-family:var(--f-num);font-size:11px;width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;border:1.5px solid var(--muted);color:var(--muted)}
+.lv.A{border-color:var(--accent);color:var(--accent)}
+.due{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.due.over{color:var(--bad);font-weight:500}.due.today{color:var(--warn);font-weight:500}
+.pill{font-size:11px;padding:2px 6px;border-radius:999px;font-weight:500}
+.pill.over{background:var(--bad-soft);color:var(--bad)}.pill.today{background:var(--warn-soft);color:var(--warn)}
+.empty{color:var(--muted);font-size:14px;padding:8px 2px}
+/* funnel */
+.fun{display:flex;flex-direction:column;gap:6px}
+.fr{display:grid;grid-template-columns:5.2em 1fr 3.4em;align-items:center;gap:8px;font-size:13px}
+.fr .bar{height:18px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.fr .bar i{display:block;height:100%;background:var(--accent);border-radius:4px;min-width:2px}
+.fun.r .bar i{background:var(--recruit)}
+.fr .c{text-align:right}
+.cv{grid-column:2/4;font-size:11.5px;color:var(--muted);margin:-3px 0 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.04em}
+td.r,th.r{text-align:right}
+.scroll{overflow-x:auto}
+/* toolbar */
+.toolbar{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* pipeline */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 14px;cursor:pointer;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.board{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity}
+.col{flex:0 0 200px;background:var(--sunk);border-radius:var(--r);padding:8px;scroll-snap-align:start;display:flex;flex-direction:column;gap:6px}
+.col h3{margin:2px 4px 4px;font-size:13px;display:flex;justify-content:space-between;font-weight:700}
+.col.paused{opacity:.75}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 9px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;width:100%}
+.pcard .m{font-size:12px;color:var(--muted)}
+/* bottom nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tabs-in{display:grid;grid-template-columns:repeat(4,1fr);width:100%;max-width:520px}
+.tab{border:0;background:none;padding:9px 4px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted)}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tab[aria-current="page"]{color:var(--accent);font-weight:500}
+.tab.add{color:var(--accent)}
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,20,20,.45)}
+.panel{background:var(--bg);width:100%;max-width:640px;max-height:94%;overflow-y:auto;border-radius:14px 14px 0 0;padding-block:16px calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (min-width:700px){.sheet{align-items:center}.panel{border-radius:14px;max-height:88%}}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.ph h2{font-size:21px}
+.dl{display:grid;grid-template-columns:5.5em 1fr;gap:6px 10px;font-size:14px}
+.dl dt{color:var(--muted)}.dl dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.f input,.f select,.f textarea{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 10px;font-size:15px;color:var(--ink);width:100%}
+.f textarea{min-height:70px;resize:vertical}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.fg{grid-template-columns:1fr}}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;color:var(--ink);background:var(--surface);cursor:pointer}
+.sw{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:14px}
+.sw input{width:18px;height:18px;accent-color:var(--accent)}
+.log{display:flex;flex-direction:column;gap:0;font-size:14px}
+.log div{display:grid;grid-template-columns:5.6em 3.6em 1fr;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.log .t{color:var(--muted);font-size:12.5px}
+.err{color:var(--bad);font-size:13px}
+.note{font-size:12.5px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;z-index:40}
+@media (prefers-reduced-motion:no-preference){.panel{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <header class="top">
+    <div><h1>名單總系統</h1><div class="sub" id="subline">保經業務 · 客戶與增員名單管理</div></div>
+    <div id="hdr-actions"></div>
+  </header>
+  <div id="view"><div class="card empty">正在載入名單…</div></div>
+</div>
+
+<nav class="tabs" aria-label="主選單"><div class="tabs-in">
+  <button class="tab" data-v="home" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>總覽</button>
+  <button class="tab" data-v="list"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5h6M16 9h6M18 13h4"/></svg>名單</button>
+  <button class="tab" data-v="pipe"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/></svg>流程</button>
+  <button class="tab add" data-v="add"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新增</button>
+</div></nav>
+
+<div id="sheet" class="sheet" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const CLIENT_STAGES=['名單','已約訪','已面談','需求分析','建議書','成交','暫緩'];
+const RECRUIT_STAGES=['名單','已接觸','事業說明','考照中','已報到','輔導期','暫緩'];
+const SOURCES=['緣故','轉介紹','陌生開發','社群','活動','其他'];
+const RELATIONS=['親戚','同學','同事','朋友','鄰居','客戶介紹','其他'];
+const NEEDS=['醫療','壽險','意外','長照','儲蓄','退休','子女教育','房貸保障','外幣資產','資產傳承'];
+const AGES=['20以下','20-29','30-39','40-49','50-59','60以上'];
+const LOG_TYPES=['電話','訊息','見面','其他'];
+// stage changes that count as KPI activity
+const STAGE_KPI={client:{'已約訪':'約訪','已面談':'面談','成交':'成交'},recruit:{'事業說明':'事業說明','已報到':'報到'}};
+const DEFAULT_RATES={r1:.3,r2:.7,r3:.25};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const fmt=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>fmt(new Date());
+const addDays=(s,n)=>{const[y,m,d]=s.split('-').map(Number);return fmt(new Date(y,m-1,d+n))};
+const weekStart=()=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return fmt(d)};
+const monthStart=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-01'};
+const short=s=>s?s.slice(5).replace('-','/'):'';
+const newId=()=>'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const pct=x=>isFinite(x)?Math.round(x*100)+'%':'—';
+
+const S={contacts:[],settings:{weeklyNew:10,weeklyAppt:5,weeklyMeet:3,monthlyDeals:4},
+  view:'home',pipe:'client',q:'',filter:'all',status:'loading',db:null,dl:null,
+  sheet:null,openId:null,rendered:null,mode:'db'};
+
+/* ---------- storage ---------- */
+const queues={};
+function enqueue(key,fn){const p=(queues[key]||Promise.resolve()).catch(()=>{}).then(fn);queues[key]=p;return p}
+const LS_KEY='prospect-system-local';
+function lsLoad(){try{const r=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(r){S.contacts=r.contacts||[];Object.assign(S.settings,r.settings||{})}}catch(e){}}
+function lsSave(){try{localStorage.setItem(LS_KEY,JSON.stringify({contacts:S.contacts,settings:S.settings}))}catch(e){}}
+async function saveContact(c){
+  c.updatedAt=new Date().toISOString();
+  if(S.mode==='db'){
+    const body=clone(c);delete body.id;
+    try{await enqueue(c.id,()=>S.db.collection('contacts').doc(c.id).set(body))}
+    catch(e){toast(e&&e.code==='quota_exceeded'?'資料庫已滿，請先刪除一些名單':'儲存失敗，請再試一次');throw e}
+  }else{const i=S.contacts.findIndex(x=>x.id===c.id);if(i>=0)S.contacts[i]=c;else S.contacts.push(c);lsSave();render()}
+}
+async function deleteContact(id){
+  if(S.mode==='db'){try{await enqueue(id,()=>S.db.collection('contacts').doc(id).delete())}catch(e){toast('刪除失敗，請再試一次');throw e}}
+  else{S.contacts=S.contacts.filter(x=>x.id!==id);lsSave();render()}
+}
+async function saveSettings(){
+  if(S.mode==='db'){try{await enqueue('settings',()=>S.db.doc('settings/goals').set(clone(S.settings)))}catch(e){toast('目標儲存失敗')}}
+  else{lsSave()}
+  render();
+}
+
+/* ---------- derived numbers ---------- */
+function kindInfo(k){return k==='client'
+  ?{stages:CLIENT_STAGES,flag:'isClient',field:'clientStage',max:'clientMax',label:'客戶'}
+  :{stages:RECRUIT_STAGES,flag:'isRecruit',field:'recruitStage',max:'recruitMax',label:'增員'}}
+function funnel(k){
+  const K=kindInfo(k),list=S.contacts.filter(c=>c[K.flag]);
+  const main=K.stages.slice(0,-1);
+  const reached=main.map((_,i)=>list.filter(c=>(c[K.max]??0)>=i).length);
+  const paused=list.filter(c=>c[K.field]==='暫緩').length;
+  return {main,reached,paused,total:list.length};
+}
+function allLogs(){const out=[];S.contacts.forEach(c=>(c.log||[]).forEach(l=>out.push(l)));return out}
+function weekStats(){
+  const ws=weekStart(),logs=allLogs().filter(l=>l.d>=ws);
+  const cnt=t=>logs.filter(l=>l.k===t).length;
+  return {newC:S.contacts.filter(c=>(c.createdAt||'').slice(0,10)>=ws).length,appt:cnt('約訪'),meet:cnt('面談'),deal:cnt('成交'),
+    touch:logs.filter(l=>LOG_TYPES.includes(l.k)).length,recruitTalk:cnt('事業說明')};
+}
+function monthDeals(){
+  const ms=monthStart();
+  const deals=S.contacts.filter(c=>c.clientStage==='成交'&&(c.stageDates?.['成交']||'')>=ms);
+  return {n:deals.length,prem:deals.reduce((s,c)=>s+(Number(c.premium)||0),0)};
+}
+function rates(){
+  const f=funnel('client'),R=f.reached;
+  const r=(a,b,def)=>R[b]>=5?{v:R[a]/R[b],real:true}:{v:def,real:false};
+  return {r1:r(1,0,DEFAULT_RATES.r1),r2:r(2,1,DEFAULT_RATES.r2),r3:r(5,2,DEFAULT_RATES.r3)};
+}
+function dueClass(d){if(!d)return'';const t=today();return d<t?'over':d===t?'today':''}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('.tab[data-v]').forEach(b=>{if(b.dataset.v===S.view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  const ex=S.contacts.some(c=>c.example);
+  $('#subline').textContent=`保經業務 · ${S.contacts.length} 位名單 · 資料只存在這台裝置的瀏覽器`;
+  if(S.view==='list'&&S.rendered==='list'&&$('#q')){renderResults();refreshSheet();return}
+  S.rendered=S.view;
+  const v=$('#view');
+  if(S.status==='loading'){v.innerHTML='<div class="card empty">正在載入名單…</div>';return}
+  let html='';
+  if(S.status==='slow')html+='<div class="banner" style="margin-bottom:12px">資料庫暫時連不上，顯示的內容可能不是最新的。</div>';
+  if(S.status==='error')html+='<div class="banner" style="margin-bottom:12px">資料庫連線中斷，請重新開啟頁面。</div>';
+  if(ex)html+=`<div class="banner" style="margin-bottom:12px"><span>目前有標示「範例」的示範名單，熟悉操作後可以一鍵清除。</span><button class="btn sm" data-act="clear-ex">清除範例</button></div>`;
+  html+=S.view==='home'?homeHTML():S.view==='list'?listHTML():pipeHTML();
+  v.innerHTML=html;
+  if(S.view==='list')renderResults();
+  refreshSheet();
+}
+
+function homeHTML(){
+  if(!S.contacts.length)return `<div class="card stack"><h2>先建立第一位名單</h2><p class="empty" style="margin:0">把你想得到的人都先列進來：親戚、同學、前同事、朋友。每位可以同時標記為「客戶」或「增員」對象，系統會自動算出跟進提醒、轉換率和每週活動量。</p><div><button class="btn pri" data-act="add">新增名單</button></div></div>`;
+  const w=weekStats(),g=S.settings,md=monthDeals(),t=today(),wk=addDays(t,7);
+  const due=S.contacts.filter(c=>c.nextDate&&c.nextDate<=wk).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  const over=due.filter(c=>c.nextDate<t).length,tod=due.filter(c=>c.nextDate===t).length;
+  const kpi=(l,v,goal)=>{const p=goal?Math.min(1,v/goal):0;return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${goal?`<div class="g">目標 <span class="num">${goal}</span></div><div class="meter"><i class="${p>=1?'done':''}" style="width:${p*100}%"></i></div>`:''}</div>`};
+  const R=rates(),T=Number(g.monthlyDeals)||0;
+  const needMeet=Math.ceil(T/R.r3.v),needAppt=Math.ceil(needMeet/R.r2.v),needList=Math.ceil(needAppt/R.r1.v);
+  const src=SOURCES.map(s=>{const l=S.contacts.filter(c=>c.source===s);return{s,n:l.length,cl:l.filter(c=>c.isClient).length,deal:l.filter(c=>c.clientStage==='成交').length,rec:l.filter(c=>c.recruitStage==='已報到'||c.recruitStage==='輔導期').length}}).filter(x=>x.n);
+  return `<div class="stack">
+  <section class="card">
+    <div class="card-h"><h2>本週活動量</h2><button class="btn sm" data-act="goals">調整目標</button></div>
+    <div class="kpis">${kpi('新增名單',w.newC,g.weeklyNew)}${kpi('約訪',w.appt,g.weeklyAppt)}${kpi('面談',w.meet,g.weeklyMeet)}${kpi('互動紀錄',w.touch)}</div>
+    <p class="note" style="margin:10px 0 0">本月成交 <span class="num">${md.n}</span> 件 · 年繳保費 <span class="num">${md.prem.toLocaleString()}</span> 元 · 本週事業說明 <span class="num">${w.recruitTalk}</span> 場</p>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>待跟進（7 天內）</h2><span class="sub">${over?`<span class="pill over">逾期 ${over}</span> `:''}${tod?`<span class="pill today">今天 ${tod}</span>`:''}</span></div>
+    ${due.length?`<div class="rows">${due.slice(0,12).map(rowHTML).join('')}</div>`:'<div class="empty">7 天內沒有待辦。打開名單設定「下一步行動」和日期，這裡就會提醒你。</div>'}
+  </section>
+  <div class="grid2">
+    <section class="card"><div class="card-h"><h2>客戶漏斗</h2><span class="sub num">${funnel('client').total} 人</span></div>${funnelHTML('client')}</section>
+    <section class="card"><div class="card-h"><h2>增員漏斗</h2><span class="sub num">${funnel('recruit').total} 人</span></div>${funnelHTML('recruit')}</section>
+  </div>
+  <section class="card">
+    <div class="card-h"><h2>目標反推</h2><span class="sub">每月成交 <span class="num">${T}</span> 件</span></div>
+    <div class="scroll"><table><thead><tr><th>需要的量</th><th class="r">每月</th><th class="r">每週</th><th>使用的轉換率</th></tr></thead><tbody>
+      <tr><td>新名單</td><td class="r num">${needList}</td><td class="r num">${Math.ceil(needList/4.3)}</td><td class="note">名單→約訪 ${pct(R.r1.v)}${R.r1.real?'（實際）':'（預設）'}</td></tr>
+      <tr><td>約訪</td><td class="r num">${needAppt}</td><td class="r num">${Math.ceil(needAppt/4.3)}</td><td class="note">約訪→面談 ${pct(R.r2.v)}${R.r2.real?'（實際）':'（預設）'}</td></tr>
+      <tr><td>面談</td><td class="r num">${needMeet}</td><td class="r num">${Math.ceil(needMeet/4.3)}</td><td class="note">面談→成交 ${pct(R.r3.v)}${R.r3.real?'（實際）':'（預設）'}</td></tr>
+    </tbody></table></div>
+    <p class="note" style="margin:8px 0 0">某階段累積滿 5 人後，改用你自己的實際轉換率計算。</p>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>名單來源分析</h2></div>
+    <div class="scroll"><table><thead><tr><th>來源</th><th class="r">人數</th><th class="r">客戶</th><th class="r">成交</th><th class="r">成交率</th><th class="r">增員報到</th></tr></thead><tbody>
+    ${src.map(x=>`<tr><td>${x.s}</td><td class="r num">${x.n}</td><td class="r num">${x.cl}</td><td class="r num">${x.deal}</td><td class="r num">${x.cl?pct(x.deal/x.cl):'—'}</td><td class="r num">${x.rec}</td></tr>`).join('')}
+    </tbody></table></div>
+  </section>
+  <section class="card stack" style="gap:10px">
+    <h2>資料備份</h2>
+    <p class="note" style="margin:0">名單只存在這台裝置的瀏覽器裡，不會上傳到任何伺服器。清除瀏覽器資料或換手機前，請先下載備份。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-act="backup">下載備份（JSON）</button>
+      <button class="btn" data-act="restore">從備份還原</button>
+      <button class="btn" data-act="export">匯出 CSV（Excel 可開）</button>
+    </div>
+    <input type="file" id="restore-file" accept=".json,application/json" hidden>
+  </section>
+  </div>`;
+}
+function funnelHTML(k){
+  const f=funnel(k),max=Math.max(1,f.reached[0]);
+  let h=`<div class="fun ${k==='recruit'?'r':''}">`;
+  f.main.forEach((s,i)=>{
+    h+=`<div class="fr"><span>${s}</span><span class="bar"><i style="width:${f.reached[i]/max*100}%"></i></span><span class="c num">${f.reached[i]}</span>`;
+    if(i>0)h+=`<span class="cv">↳ 上一階段轉換 ${f.reached[i-1]?pct(f.reached[i]/f.reached[i-1]):'—'}</span>`;
+    h+='</div>';
+  });
+  h+=`</div><p class="note" style="margin:8px 0 0">數字為曾經到達該階段的人數。暫緩中：<span class="num">${f.paused}</span> 人</p>`;
+  return h;
+}
+function rowHTML(c){
+  const dc=dueClass(c.nextDate);
+  return `<button class="row" data-open="${esc(c.id)}">
+    <span class="n"><span class="lv ${esc(c.level)}">${esc(c.level||'–')}</span>${esc(c.name)}${c.isClient?`<span class="tag t-c">客戶·${esc(c.clientStage)}</span>`:''}${c.isRecruit?`<span class="tag t-r">增員·${esc(c.recruitStage)}</span>`:''}${c.example?'<span class="tag t-ex">範例</span>':''}</span>
+    <span class="m">${esc([c.relation,c.source,c.nextAction].filter(Boolean).join(' · '))||'尚未設定下一步'}</span>
+    <span class="d">${c.nextDate?`<span class="due ${dc}">${dc==='over'?'逾期 ':dc==='today'?'今天 ':''}${short(c.nextDate)}</span>`:''}</span>
+  </button>`;
+}
+function listHTML(){
+  const f=[['all','全部'],['client','客戶'],['recruit','增員'],['over','逾期跟進'],['A','A 級'],['nonext','沒有下一步'],['paused','暫緩']];
+  return `<div class="toolbar"><input id="q" class="search" type="search" placeholder="搜尋姓名、職業、備註…" value="${esc(S.q)}" aria-label="搜尋名單">
+  <div class="chips">${f.map(([k,l])=>`<button class="chip" data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div></div>
+  <div class="card" style="padding:4px 12px"><div class="rows" id="results"></div></div>`;
+}
+function renderResults(){
+  const q=S.q.trim().toLowerCase(),t=today();
+  let l=S.contacts.filter(c=>!q||[c.name,c.occupation,c.notes,c.relation,c.referrer,c.family,(c.needs||[]).join(' ')].join(' ').toLowerCase().includes(q));
+  const F={client:c=>c.isClient,recruit:c=>c.isRecruit,over:c=>c.nextDate&&c.nextDate<t,A:c=>c.level==='A',nonext:c=>!c.nextDate,paused:c=>c.clientStage==='暫緩'||c.recruitStage==='暫緩'}[S.filter];
+  if(F)l=l.filter(F);
+  l.sort((a,b)=>(a.nextDate||'9999').localeCompare(b.nextDate||'9999')||(a.level||'Z').localeCompare(b.level||'Z'));
+  document.querySelectorAll('.chip[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===S.filter));
+  $('#results').innerHTML=l.length?l.map(rowHTML).join(''):`<div class="empty">${S.contacts.length?'沒有符合條件的名單。':'還沒有名單，點下方「新增」開始。'}</div>`;
+}
+function pipeHTML(){
+  const K=kindInfo(S.pipe),list=S.contacts.filter(c=>c[K.flag]);
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <div class="seg" role="group" aria-label="流程類型"><button data-pipe="client" aria-pressed="${S.pipe==='client'}">客戶流程</button><button data-pipe="recruit" aria-pressed="${S.pipe==='recruit'}">增員流程</button></div>
+    <span class="sub">點卡片可以改階段、記錄互動</span></div>
+  <div class="board">${K.stages.map(s=>{const cs=list.filter(c=>c[K.field]===s);
+    return `<div class="col ${s==='暫緩'?'paused':''}"><h3><span>${s}</span><span class="num">${cs.length}</span></h3>
+    ${cs.map(c=>{const dc=dueClass(c.nextDate);return `<button class="pcard" data-open="${esc(c.id)}"><span><span class="lv ${esc(c.level)}" style="margin-right:5px">${esc(c.level||'–')}</span>${esc(c.name)}${c.example?' <span class="tag t-ex">範例</span>':''}</span><span class="m">${esc(c.nextAction||'未設定下一步')}</span>${c.nextDate?`<span class="due ${dc}" style="font-size:12px">${short(c.nextDate)}</span>`:''}</button>`}).join('')||'<span class="note" style="padding:4px">—</span>'}</div>`}).join('')}</div>`;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(kind,id){S.sheet=kind;S.openId=id||null;drawSheet()}
+function closeSheet(){S.sheet=null;S.openId=null;const s=$('#sheet');s.hidden=true;s.innerHTML=''}
+function refreshSheet(){if(S.sheet==='detail'&&!$('#sheet').contains(document.activeElement))drawSheet()}
+function drawSheet(){
+  const s=$('#sheet');
+  if(!S.sheet){s.hidden=true;return}
+  let h='';
+  if(S.sheet==='detail'){const c=S.contacts.find(x=>x.id===S.openId);if(!c){closeSheet();return}h=detailHTML(c)}
+  else if(S.sheet==='edit')h=formHTML(S.openId?S.contacts.find(x=>x.id===S.openId):null);
+  else if(S.sheet==='goals')h=goalsHTML();
+  else if(S.sheet==='confirm')h=confirmHTML();
+  s.innerHTML=`<div class="panel" role="dialog" aria-modal="true">${h}</div>`;s.hidden=false;
+}
+function detailHTML(c){
+  const dc=dueClass(c.nextDate);
+  const stageSel=(k)=>{const K=kindInfo(k);return `<label class="f">${K.label}階段<select data-stage="${k}">${K.stages.map(s=>`<option ${c[K.field]===s?'selected':''}>${s}</option>`).join('')}</select></label>`};
+  const log=(c.log||[]).slice().reverse();
+  return `<div class="ph"><div><h2>${esc(c.name)} ${c.example?'<span class="tag t-ex">範例</span>':''}</h2>
+    <div class="sub">${esc([c.relation,c.source,c.referrer?'介紹人 '+c.referrer:''].filter(Boolean).join(' · '))}</div></div>
+    <div style="display:flex;gap:6px"><button class="btn sm" data-act="edit">編輯</button><button class="btn sm" data-act="close" aria-label="關閉">關閉</button></div></div>
+  <div class="stack">
+    <div class="card stack" style="gap:10px">
+      <div class="fg">${c.isClient?stageSel('client'):''}${c.isRecruit?stageSel('recruit'):''}</div>
+      ${!c.isClient&&!c.isRecruit?'<p class="note" style="margin:0">尚未標記為客戶或增員對象，按「編輯」勾選後就會出現在流程裡。</p>':''}
+      <div class="fg"><label class="f">下一步行動<input id="na" value="${esc(c.nextAction)}" placeholder="例如：約喝咖啡聊退休規劃"></label>
+      <label class="f">日期<input id="nd" type="date" value="${esc(c.nextDate)}"></label></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm pri" data-act="save-next">更新下一步</button>
+      <button class="btn sm" data-act="plus" data-n="3">+3 天</button><button class="btn sm" data-act="plus" data-n="7">+1 週</button><button class="btn sm" data-act="plus" data-n="30">+1 月</button>
+      ${dc==='over'?'<span class="pill over">已逾期</span>':dc==='today'?'<span class="pill today">今天</span>':''}</div>
+    </div>
+    <div class="card"><dl class="dl">
+      <dt>熟悉度</dt><dd>${esc(c.level||'—')} 級${c.influence?` · 影響力 ${'●'.repeat(c.influence)}${'○'.repeat(3-c.influence)}`:''}</dd>
+      <dt>年齡層</dt><dd>${esc(c.age||'—')}</dd><dt>職業</dt><dd>${esc(c.occupation||'—')}</dd>
+      <dt>家庭</dt><dd>${esc(c.family||'—')}</dd><dt>需求</dt><dd>${(c.needs||[]).map(n=>`<span class="tag t-c" style="margin:0 4px 4px 0">${esc(n)}</span>`).join('')||'—'}</dd>
+      <dt>年繳保費</dt><dd class="num">${c.premium?Number(c.premium).toLocaleString()+' 元':'—'}</dd>
+      <dt>聯絡方式</dt><dd>${esc(c.contact||'—')}</dd>
+      <dt>個資同意</dt><dd>${c.consent?'已取得':'<span style="color:var(--warn)">尚未取得</span>'}</dd>
+      <dt>備註</dt><dd style="white-space:pre-wrap">${esc(c.notes||'—')}</dd></dl></div>
+    <div class="card"><div class="card-h"><h2>互動紀錄</h2></div>
+      <div class="fg" style="grid-template-columns:7em 1fr"><label class="f">類型<select id="lt">${LOG_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></label>
+      <label class="f">內容<input id="lx" placeholder="聊了什麼、對方反應"></label></div>
+      <div style="margin:8px 0 6px"><button class="btn sm pri" data-act="add-log">加入紀錄</button></div>
+      <div class="log">${log.map(l=>`<div><span class="num t">${esc(l.d)}</span><span class="t">${esc(l.k)}</span><span>${esc(l.x)}</span></div>`).join('')||'<p class="empty" style="margin:0">還沒有紀錄。改階段時系統會自動記一筆。</p>'}</div></div>
+    <div><button class="btn sm danger" data-act="ask-del">刪除這位名單</button></div>
+  </div>`;
+}
+function formHTML(c){
+  c=c||{level:'B',source:'緣故',relation:'朋友',isClient:true,isRecruit:false};
+  const opt=(arr,v)=>arr.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('');
+  return `<div class="ph"><h2>${c.id?'編輯名單':'新增名單'}</h2><button class="btn sm" data-act="${c.id?'back':'close'}">取消</button></div>
+  <form id="cf" class="stack" novalidate>
+    <label class="f">姓名 *<input id="f-name" name="name" value="${esc(c.name)}" required autocomplete="off"></label>
+    <div class="checks" role="group" aria-label="名單類型">
+      <label><input type="checkbox" id="f-isClient" name="isClient" ${c.isClient?'checked':''}>客戶對象</label>
+      <label><input type="checkbox" id="f-isRecruit" name="isRecruit" ${c.isRecruit?'checked':''}>增員對象</label></div>
+    <div class="fg">
+      <label class="f">關係<select id="f-relation" name="relation">${opt(RELATIONS,c.relation)}</select></label>
+      <label class="f">來源<select id="f-source" name="source">${opt(SOURCES,c.source)}</select></label>
+      <label class="f">介紹人<input id="f-referrer" name="referrer" value="${esc(c.referrer)}"></label>
+      <label class="f">熟悉度<select id="f-level" name="level">${opt(['A','B','C'],c.level)}</select></label>
+      <label class="f">影響力（人脈）<select id="f-influence" name="influence">${[1,2,3].map(n=>`<option value="${n}" ${Number(c.influence||2)===n?'selected':''}>${['低','中','高'][n-1]}</option>`).join('')}</select></label>
+      <label class="f">年齡層<select id="f-age" name="age"><option value="">—</option>${opt(AGES,c.age)}</select></label>
+      <label class="f">職業<input id="f-occupation" name="occupation" value="${esc(c.occupation)}"></label>
+      <label class="f">家庭狀況<input id="f-family" name="family" value="${esc(c.family)}" placeholder="例如：已婚、2 個小孩"></label>
+    </div>
+    <div class="f">需求<div class="checks">${NEEDS.map((n,i)=>`<label><input type="checkbox" id="f-need-${i}" name="needs" value="${n}" ${(c.needs||[]).includes(n)?'checked':''}>${n}</label>`).join('')}</div></div>
+    <div class="fg">
+      <label class="f">聯絡方式<input id="f-contact" name="contact" value="${esc(c.contact)}" placeholder="LINE / 電話"></label>
+      <label class="f">年繳保費（成交後填）<input id="f-premium" name="premium" type="number" inputmode="numeric" min="0" value="${esc(c.premium)}"></label>
+    </div>
+    <label class="f">備註<textarea id="f-notes" name="notes">${esc(c.notes)}</textarea></label>
+    <label class="sw"><input type="checkbox" id="f-consent" name="consent" ${c.consent?'checked':''}>已取得對方同意蒐集與使用個人資料</label>
+    <p class="note" style="margin:0">請勿記錄身分證字號、病歷等敏感個資。</p>
+    <p class="err" id="ferr" hidden></p>
+    <div><button class="btn pri" type="submit">${c.id?'儲存':'建立名單'}</button></div>
+  </form>`;
+}
+function goalsHTML(){const g=S.settings;
+  return `<div class="ph"><h2>調整目標</h2><button class="btn sm" data-act="close">取消</button></div>
+  <form id="gf" class="stack" novalidate><div class="fg">
+  <label class="f">每週新增名單<input id="g-weeklyNew" name="weeklyNew" type="number" min="0" value="${g.weeklyNew}"></label>
+  <label class="f">每週約訪<input id="g-weeklyAppt" name="weeklyAppt" type="number" min="0" value="${g.weeklyAppt}"></label>
+  <label class="f">每週面談<input id="g-weeklyMeet" name="weeklyMeet" type="number" min="0" value="${g.weeklyMeet}"></label>
+  <label class="f">每月成交件數（反推用）<input id="g-monthlyDeals" name="monthlyDeals" type="number" min="0" value="${g.monthlyDeals}"></label>
+  </div><div><button class="btn pri" type="submit">儲存目標</button></div></form>`}
+let confirmCtx=null;
+function confirmHTML(){return `<div class="ph"><h2>${esc(confirmCtx.title)}</h2></div><p>${esc(confirmCtx.text)}</p>
+  <div style="display:flex;gap:8px"><button class="btn danger" data-act="confirm-yes">${esc(confirmCtx.yes)}</button><button class="btn" data-act="confirm-no">取消</button></div>`}
+function askConfirm(ctx){confirmCtx=ctx;openSheet('confirm',S.openId)}
+
+/* ---------- actions ---------- */
+function current(){return clone(S.contacts.find(x=>x.id===S.openId))}
+async function changeStage(k,val){
+  const c=current();if(!c)return;const K=kindInfo(k),old=c[K.field];if(old===val)return;
+  c[K.field]=val;c.stageDates=c.stageDates||{};c.stageDates[val]=today();
+  const idx=K.stages.indexOf(val);if(val!=='暫緩')c[K.max]=Math.max(c[K.max]??0,idx);
+  c.log=(c.log||[]);c.log.push({d:today(),k:STAGE_KPI[k][val]||'階段',x:`${K.label}：${old} → ${val}`});
+  c.log=c.log.slice(-150);
+  await saveContact(c);toast(`已更新為「${val}」`);
+}
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.v){if(t.dataset.v==='add'){openSheet('edit');return}S.view=t.dataset.v;closeSheet();render();window.scrollTo(0,0);return}
+  if(t.dataset.open){openSheet('detail',t.dataset.open);return}
+  if(t.dataset.filter){S.filter=t.dataset.filter;renderResults();return}
+  if(t.dataset.pipe){S.pipe=t.dataset.pipe;render();return}
+  const a=t.dataset.act;if(!a)return;
+  if(a==='add')openSheet('edit');
+  else if(a==='close')closeSheet();
+  else if(a==='back'||a==='confirm-no'){if(S.openId)openSheet('detail',S.openId);else closeSheet()}
+  else if(a==='edit')openSheet('edit',S.openId);
+  else if(a==='goals')openSheet('goals');
+  else if(a==='plus'){const nd=$('#nd');nd.value=addDays(today(),Number(t.dataset.n))}
+  else if(a==='save-next'){const c=current();c.nextAction=$('#na').value.trim();c.nextDate=$('#nd').value;await saveContact(c);document.activeElement?.blur();toast('已更新下一步');drawSheet()}
+  else if(a==='add-log'){const x=$('#lx').value.trim();if(!x){$('#lx').focus();return}const c=current();c.log=(c.log||[]);c.log.push({d:today(),k:$('#lt').value,x});c.log=c.log.slice(-150);await saveContact(c);document.activeElement?.blur();toast('已加入紀錄');drawSheet()}
+  else if(a==='ask-del'){const c=S.contacts.find(x=>x.id===S.openId);askConfirm({title:`刪除「${c.name}」？`,text:'這位名單和所有互動紀錄都會被刪除，無法復原。',yes:'刪除',run:async()=>{await deleteContact(c.id);closeSheet();toast('已刪除')}})}
+  else if(a==='clear-ex'){const n=S.contacts.filter(c=>c.example).length;askConfirm({title:'清除範例名單？',text:`會刪除 ${n} 筆標示「範例」的示範資料，你自己新增的名單不受影響。`,yes:'清除範例',run:async()=>{for(const c of S.contacts.filter(c=>c.example))await deleteContact(c.id);closeSheet();toast('範例已清除')}})}
+  else if(a==='confirm-yes'){try{await confirmCtx.run()}catch(err){}}
+  else if(a==='export')exportCSV();
+});
+document.addEventListener('change',e=>{const s=e.target.closest('select[data-stage]');if(s)changeStage(s.dataset.stage,s.value)});
+document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;renderResults()}});
+document.addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.target,fd=new FormData(f);
+  if(f.id==='gf'){['weeklyNew','weeklyAppt','weeklyMeet','monthlyDeals'].forEach(k=>S.settings[k]=Math.max(0,Number(fd.get(k))||0));closeSheet();await saveSettings();toast('目標已儲存');return}
+  if(f.id!=='cf')return;
+  const name=(fd.get('name')||'').trim();
+  if(!name){const er=$('#ferr');er.textContent='請填寫姓名。';er.hidden=false;$('#f-name').focus();return}
+  const prev=S.openId?current():null;
+  const c=prev||{id:newId(),createdAt:new Date().toISOString(),clientStage:'名單',recruitStage:'名單',clientMax:0,recruitMax:0,log:[{d:today(),k:'建立',x:'加入名單'}],stageDates:{}};
+  Object.assign(c,{name,isClient:fd.has('isClient'),isRecruit:fd.has('isRecruit'),relation:fd.get('relation'),source:fd.get('source'),
+    referrer:(fd.get('referrer')||'').trim(),level:fd.get('level'),influence:Number(fd.get('influence'))||2,age:fd.get('age'),
+    occupation:(fd.get('occupation')||'').trim(),family:(fd.get('family')||'').trim(),needs:fd.getAll('needs'),
+    contact:(fd.get('contact')||'').trim(),premium:fd.get('premium')?Number(fd.get('premium')):'',notes:(fd.get('notes')||'').trim(),consent:fd.has('consent')});
+  c.clientStage=c.clientStage||'名單';c.recruitStage=c.recruitStage||'名單';
+  try{await saveContact(c)}catch(err){return}
+  S.openId=c.id;toast(prev?'已儲存':'已建立名單');
+  if(S.mode==='db'&&!S.contacts.find(x=>x.id===c.id))S.contacts.push(c);
+  openSheet('detail',c.id);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.sheet)closeSheet()});
+$('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
+
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
+
+async function exportCSV(){
+  const cols=[['姓名','name'],['客戶對象',c=>c.isClient?'是':''],['增員對象',c=>c.isRecruit?'是':''],['客戶階段','clientStage'],['增員階段','recruitStage'],['關係','relation'],['來源','source'],['介紹人','referrer'],['熟悉度','level'],['年齡層','age'],['職業','occupation'],['家庭','family'],['需求',c=>(c.needs||[]).join('、')],['年繳保費','premium'],['下一步','nextAction'],['下一步日期','nextDate'],['個資同意',c=>c.consent?'是':'否'],['備註','notes'],['建立日期',c=>(c.createdAt||'').slice(0,10)]];
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const csv='﻿'+[cols.map(c=>q(c[0])).join(',')].concat(S.contacts.map(c=>cols.map(([,k])=>q(typeof k==='function'?k(c):c[k])).join(','))).join('\r\n');
+  saveFile(`prospects-${today()}.csv`,csv,'text/csv;charset=utf-8');toast('已匯出 CSV');
+}
+function saveFile(name,text,type){
+  const url=URL.createObjectURL(new Blob([text],{type}));
+  const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function backup(){
+  saveFile(`prospects-backup-${today()}.json`,JSON.stringify({app:'prospect-system',version:1,exportedAt:new Date().toISOString(),contacts:S.contacts,settings:S.settings},null,2),'application/json');
+  toast('已下載備份');
+}
+document.addEventListener('click',e=>{if(e.target.closest('[data-act="backup"]'))backup();if(e.target.closest('[data-act="restore"]'))$('#restore-file').click()});
+document.addEventListener('change',e=>{
+  if(e.target.id!=='restore-file')return;const file=e.target.files[0];e.target.value='';if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{let data;try{data=JSON.parse(r.result)}catch(err){toast('這個檔案不是有效的備份檔');return}
+    if(!data||!Array.isArray(data.contacts)){toast('這個檔案不是名單備份檔');return}
+    askConfirm({title:'從備份還原？',text:`會用備份裡的 ${data.contacts.length} 位名單取代目前的 ${S.contacts.length} 位名單。建議先下載一份目前的備份。`,yes:'還原',run:async()=>{
+      S.contacts=data.contacts.filter(c=>c&&c.id&&c.name);if(data.settings)Object.assign(S.settings,data.settings);lsSave();closeSheet();render();toast('已還原備份')}});
+  };
+  r.readAsText(file);
+});
+
+/* ---------- sample data on first launch ---------- */
+function sampleContacts(){
+  const t=today(),d=n=>addDays(t,n),iso=n=>d(n)+'T10:00:00+08:00';
+  const base={example:true,referrer:'',premium:'',contact:'',notes:'',recruitStage:'名單',recruitMax:0,clientStage:'名單',clientMax:0,stageDates:{},needs:[]};
+  return [
+    {...base,id:'ex1',name:'（範例）王小明',isClient:true,isRecruit:false,relation:'同學',source:'緣故',level:'A',influence:2,age:'30-39',occupation:'工程師',family:'已婚、1 個小孩',needs:['子女教育','壽險','外幣資產'],contact:'LINE',notes:'對美元保單有興趣',consent:true,clientStage:'需求分析',clientMax:3,nextAction:'帶需求分析表見面',nextDate:d(2),createdAt:iso(-18),
+      log:[{d:d(-18),k:'建立',x:'加入名單'},{d:d(-6),k:'約訪',x:'客戶：名單 → 已約訪'},{d:d(-3),k:'面談',x:'客戶：已約訪 → 已面談'},{d:d(-1),k:'階段',x:'客戶：已面談 → 需求分析'}]},
+    {...base,id:'ex2',name:'（範例）陳美玲',isClient:true,isRecruit:true,relation:'同事',source:'緣故',level:'A',influence:3,age:'30-39',occupation:'業務主管',family:'單身',needs:['醫療','退休'],contact:'電話',premium:36000,notes:'人脈廣，可能適合增員',consent:true,clientStage:'成交',clientMax:5,recruitStage:'事業說明',recruitMax:2,nextAction:'邀請參加事業說明會',nextDate:d(-2),stageDates:{'成交':t},createdAt:iso(-28),
+      log:[{d:d(-28),k:'建立',x:'加入名單'},{d:d(-4),k:'事業說明',x:'增員：已接觸 → 事業說明'},{d:t,k:'成交',x:'客戶：建議書 → 成交'}]},
+    {...base,id:'ex3',name:'（範例）林志豪',isClient:true,isRecruit:false,relation:'客戶介紹',source:'轉介紹',referrer:'陳美玲',level:'B',influence:2,age:'40-49',occupation:'自營商',family:'已婚、2 個小孩',needs:['房貸保障','長照'],contact:'LINE',consent:false,clientStage:'已約訪',clientMax:1,nextAction:'週五晚上喝咖啡',nextDate:t,createdAt:iso(-5),
+      log:[{d:d(-5),k:'建立',x:'加入名單'},{d:d(-2),k:'約訪',x:'客戶：名單 → 已約訪'}]},
+    {...base,id:'ex4',name:'（範例）張雅婷',isClient:false,isRecruit:true,relation:'朋友',source:'社群',level:'B',influence:2,age:'20-29',occupation:'行政',family:'單身',contact:'IG',notes:'想轉職，對收入彈性有興趣',consent:true,recruitStage:'考照中',recruitMax:3,nextAction:'確認人身保險考試日期',nextDate:d(4),createdAt:iso(-22),
+      log:[{d:d(-22),k:'建立',x:'加入名單'},{d:d(-8),k:'階段',x:'增員：事業說明 → 考照中'}]},
+    {...base,id:'ex5',name:'（範例）黃建國',isClient:true,isRecruit:false,relation:'親戚',source:'緣故',level:'C',influence:1,age:'50-59',occupation:'公務員',family:'已婚、子女已成年',needs:['退休','資產傳承'],contact:'電話',consent:false,nextAction:'',nextDate:'',createdAt:iso(-1),
+      log:[{d:d(-1),k:'建立',x:'加入名單'}]}
+  ];
+}
+
+/* ---------- boot ---------- */
+S.mode='local';
+lsLoad();
+try{if(!localStorage.getItem(LS_KEY+'-seeded')){if(!S.contacts.length){S.contacts=sampleContacts();lsSave()}localStorage.setItem(LS_KEY+'-seeded','1')}}catch(e){}
+S.status='ready';
+render();
+</script>
+
+</body>
+</html>
